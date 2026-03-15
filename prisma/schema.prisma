@@ -1,0 +1,352 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum IntegrationProvider {
+  shopify
+  dataforseo
+  google_trends
+  manual
+}
+
+enum CredentialStatus {
+  missing
+  configured
+  invalid
+  degraded
+}
+
+enum ProductIdeaStatus {
+  draft
+  under_review
+  scored
+  decided
+  archived
+}
+
+enum SignalSourceType {
+  keyword
+  url
+  competitor
+  marketplace
+  manual
+}
+
+enum ScoreBand {
+  go
+  test
+  no
+}
+
+enum DecisionType {
+  go
+  test
+  no
+}
+
+model Brand {
+  id                   String                @id @default(cuid())
+  slug                 String                @unique
+  name                 String
+  description          String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  stores               Store[]
+  ideas                ProductIdea[]
+  integrations         Integration[]
+  productSources       ProductSource[]
+  trendSignals         TrendSignal[]
+  seoSignals           SeoSignal[]
+  opportunityScores    OpportunityScore[]
+  productDecisions     ProductDecision[]
+  externalMappings     ExternalMapping[]
+  seoKeywords          SeoKeyword[]
+  seoClusters          SeoCluster[]
+  seoArchitectures     SeoArchitecture[]
+  pageBlueprints       PageBlueprint[]
+  collectionBlueprints CollectionBlueprint[]
+}
+
+model Store {
+  id                   String                @id @default(cuid())
+  brandId              String                @unique
+  slug                 String                @unique
+  name                 String
+  currencyCode         String                @default("EUR")
+  locale               String                @default("fr-FR")
+  shopDomain           String?
+  isActive             Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  brand                Brand                 @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  ideas                ProductIdea[]
+  integrations         Integration[]
+  productSources       ProductSource[]
+  trendSignals         TrendSignal[]
+  seoSignals           SeoSignal[]
+  opportunityScores    OpportunityScore[]
+  productDecisions     ProductDecision[]
+  externalMappings     ExternalMapping[]
+  seoKeywords          SeoKeyword[]
+  seoClusters          SeoCluster[]
+  seoArchitectures     SeoArchitecture[]
+  pageBlueprints       PageBlueprint[]
+  collectionBlueprints CollectionBlueprint[]
+}
+
+model Integration {
+  id               String              @id @default(cuid())
+  brandId          String?
+  storeId          String?
+  provider         IntegrationProvider
+  credentialStatus CredentialStatus    @default(missing)
+  isConfigured     Boolean             @default(false)
+  lastCheckedAt    DateTime?
+  note             String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  brand            Brand?              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store            Store?              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, provider])
+  @@unique([brandId, provider])
+}
+
+model ProductIdea {
+  id               String             @id @default(cuid())
+  brandId          String
+  storeId          String
+  title            String
+  keyword          String?
+  productUrl       String?
+  notes            String?
+  status           ProductIdeaStatus  @default(draft)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  brand            Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store            Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  sources          ProductSource[]
+  trendSignals     TrendSignal[]
+  seoSignals       SeoSignal[]
+  scores           OpportunityScore[]
+  decisions        ProductDecision[]
+  externalMappings ExternalMapping[]
+
+  @@index([brandId, storeId, status])
+  @@index([storeId, createdAt])
+}
+
+model ProductSource {
+  id            String           @id @default(cuid())
+  brandId       String
+  storeId       String
+  productIdeaId String
+  sourceType    SignalSourceType
+  label         String
+  reference     String?
+  rawPayload    Json?
+  createdAt     DateTime         @default(now())
+  brand         Brand            @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store         Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productIdea   ProductIdea      @relation(fields: [productIdeaId], references: [id], onDelete: Cascade)
+
+  @@index([productIdeaId, sourceType])
+}
+
+model TrendSignal {
+  id            String      @id @default(cuid())
+  brandId       String
+  storeId       String
+  productIdeaId String
+  source        String      @default("manual")
+  metric        String
+  value         Float
+  unit          String?
+  observedAt    DateTime?
+  evidenceUrl   String?
+  rawPayload    Json?
+  createdAt     DateTime    @default(now())
+  brand         Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store         Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productIdea   ProductIdea @relation(fields: [productIdeaId], references: [id], onDelete: Cascade)
+
+  @@index([productIdeaId, metric, createdAt])
+}
+
+model SeoSignal {
+  id            String      @id @default(cuid())
+  brandId       String
+  storeId       String
+  productIdeaId String
+  source        String      @default("manual")
+  metric        String
+  value         Float
+  unit          String?
+  observedAt    DateTime?
+  evidenceUrl   String?
+  rawPayload    Json?
+  createdAt     DateTime    @default(now())
+  brand         Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store         Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productIdea   ProductIdea @relation(fields: [productIdeaId], references: [id], onDelete: Cascade)
+
+  @@index([productIdeaId, metric, createdAt])
+}
+
+model OpportunityScore {
+  id               String            @id @default(cuid())
+  brandId          String
+  storeId          String
+  productIdeaId    String
+  version          Int               @default(1)
+  score            Int
+  band             ScoreBand
+  scoringMethod    String            @default("v1-manual-weighting")
+  rationale        String?
+  breakdown        Json?
+  createdAt        DateTime          @default(now())
+  brand            Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store            Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productIdea      ProductIdea       @relation(fields: [productIdeaId], references: [id], onDelete: Cascade)
+  productDecisions ProductDecision[]
+
+  @@unique([productIdeaId, version])
+  @@index([productIdeaId, createdAt])
+}
+
+model ProductDecision {
+  id                 String            @id @default(cuid())
+  brandId            String
+  storeId            String
+  productIdeaId      String
+  opportunityScoreId String?
+  decision           DecisionType
+  reason             String?
+  decidedBy          String            @default("system")
+  createdAt          DateTime          @default(now())
+  brand              Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store              Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productIdea        ProductIdea       @relation(fields: [productIdeaId], references: [id], onDelete: Cascade)
+  opportunityScore   OpportunityScore? @relation(fields: [opportunityScoreId], references: [id], onDelete: SetNull)
+
+  @@index([productIdeaId, createdAt])
+}
+
+model ExternalMapping {
+  id            String       @id @default(cuid())
+  brandId       String?
+  storeId       String?
+  productIdeaId String?
+  system        String
+  entityType    String
+  externalId    String
+  internalId    String
+  active        Boolean      @default(true)
+  rawPayload    Json?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  brand         Brand?       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store         Store?       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productIdea   ProductIdea? @relation(fields: [productIdeaId], references: [id], onDelete: Cascade)
+
+  @@unique([system, entityType, externalId])
+  @@index([entityType, internalId])
+  @@index([storeId, system])
+}
+
+model SeoKeyword {
+  id            String       @id @default(cuid())
+  brandId       String
+  storeId       String
+  keyword       String       @unique
+  volume        Int?
+  difficulty    Int?
+  intent        String?
+  source        String?
+  lastCheckedAt DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  brand         Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store         Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  clusters      SeoCluster[]
+
+  @@index([brandId, storeId])
+}
+
+model SeoCluster {
+  id            String            @id @default(cuid())
+  brandId       String
+  storeId       String
+  name          String
+  mainKeywordId String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  brand         Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store         Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  mainKeyword   SeoKeyword        @relation(fields: [mainKeywordId], references: [id])
+  architectures SeoArchitecture[]
+
+  @@index([brandId, storeId])
+}
+
+model SeoArchitecture {
+  id          String                @id @default(cuid())
+  brandId     String
+  storeId     String
+  name        String
+  clusterId   String
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  brand       Brand                 @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store       Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cluster     SeoCluster            @relation(fields: [clusterId], references: [id])
+  pages       PageBlueprint[]
+  collections CollectionBlueprint[]
+
+  @@index([brandId, storeId])
+}
+
+model PageBlueprint {
+  id              String          @id @default(cuid())
+  brandId         String
+  storeId         String
+  architectureId  String
+  slug            String
+  title           String
+  metaDescription String?
+  contentBrief    String?
+  pageType        String          @default("product")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  brand           Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store           Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  architecture    SeoArchitecture @relation(fields: [architectureId], references: [id])
+
+  @@unique([storeId, slug])
+  @@index([brandId, storeId])
+}
+
+model CollectionBlueprint {
+  id              String          @id @default(cuid())
+  brandId         String
+  storeId         String
+  architectureId  String
+  slug            String
+  title           String
+  metaDescription String?
+  contentBrief    String?
+  collectionType  String          @default("automated")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  brand           Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store           Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  architecture    SeoArchitecture @relation(fields: [architectureId], references: [id])
+
+  @@unique([storeId, slug])
+  @@index([brandId, storeId])
+}

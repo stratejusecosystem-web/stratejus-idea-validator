@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: strategus-core-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: strategus_core
+      POSTGRES_USER: strategus
+      POSTGRES_PASSWORD: strategus
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U strategus -d strategus_core"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+volumes:
+  postgres_data:

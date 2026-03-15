@@ -1,0 +1,24 @@
+{
+  "name": "stratejus-core-build",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:start": "docker compose up -d postgres",
+    "db:stop": "docker compose stop postgres",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev --name init_core_m1",
+    "db:smoke": "node scripts/db-smoke.mjs",
+    "scenario:core-handlers": "node scripts/core-handlers-scenario.mjs",
+    "scenario:http-api": "node scripts/http-api-e2e.mjs",
+    "db:setup": "npm run db:start && npm run db:push && npm run db:smoke",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.14.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.14.0"
+  }
+}

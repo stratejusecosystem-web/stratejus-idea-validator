@@ -1,0 +1,92 @@
+
+model SeoKeyword {
+  id              String        @id @default(cuid())
+  brandId         String
+  storeId         String
+  keyword         String        @unique
+  volume          Int?
+  difficulty      Int?
+  intent          String?
+  source          String?
+  lastCheckedAt   DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  brand           Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store           Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  clusters        SeoCluster[]
+
+  @@index([brandId, storeId])
+}
+
+model SeoCluster {
+  id              String        @id @default(cuid())
+  brandId         String
+  storeId         String
+  name            String
+  mainKeywordId   String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  brand           Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store           Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  mainKeyword     SeoKeyword    @relation(fields: [mainKeywordId], references: [id])
+  architectures   SeoArchitecture[]
+
+  @@index([brandId, storeId])
+}
+
+model SeoArchitecture {
+  id           String             @id @default(cuid())
+  brandId      String
+  storeId      String
+  name         String
+  clusterId    String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  brand        Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store        Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  cluster      SeoCluster         @relation(fields: [clusterId], references: [id])
+  pages        PageBlueprint[]
+  collections  CollectionBlueprint[]
+
+  @@index([brandId, storeId])
+}
+
+model PageBlueprint {
+  id               String          @id @default(cuid())
+  brandId          String
+  storeId          String
+  architectureId   String
+  slug             String
+  title            String
+  metaDescription  String?
+  contentBrief     String?
+  pageType         String          @default("product")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  brand            Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store            Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  architecture     SeoArchitecture @relation(fields: [architectureId], references: [id])
+
+  @@unique([storeId, slug])
+  @@index([brandId, storeId])
+}
+
+model CollectionBlueprint {
+  id               String          @id @default(cuid())
+  brandId          String
+  storeId          String
+  architectureId   String
+  slug             String
+  title            String
+  metaDescription  String?
+  contentBrief     String?
+  collectionType   String          @default("automated")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  brand            Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  store            Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  architecture     SeoArchitecture @relation(fields: [architectureId], references: [id])
+
+  @@unique([storeId, slug])
+  @@index([brandId, storeId])
+}
