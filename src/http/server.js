@@ -13,6 +13,8 @@ import {
 import {
   handleGetSeoKeywords,
 } from '../modules/seo-architecture/seo-architecture.handler.js';
+import { validateKeyword, validateKeywordBatch } from '../modules/idea-validator/enrich.js';
+import { getSeoTrends } from '../modules/idea-validator/sources/freudix.js';
 import {
   validateAddProductSourcePayload,
   validateAddSeoSignalPayload,
@@ -21,6 +23,8 @@ import {
   validateCreateProductIdeaPayload,
   validateCreateStorePayload,
   validateDecideProductIdeaPayload,
+  validateFreudixBatchPayload,
+  validateFreudixValidatePayload,
   validateScoreProductIdeaPayload,
 } from './validation.js';
 
@@ -104,6 +108,16 @@ async function routeRequest(req, res) {
     return sendJson(res, 200, { status: 'ok', data: await listStores() });
   }
 
+  // Idea Validator — live Google FR trends (Freudix). Optional ?limit=&q=
+  if (req.method === 'GET' && req.url.startsWith('/api/idea-validator/trends')) {
+    const params = new URL(req.url, 'http://localhost').searchParams;
+    const trends = await getSeoTrends({
+      query: params.get('q') ?? undefined,
+      limit: Number(params.get('limit') ?? 20),
+    });
+    return sendJson(res, 200, { status: 'ok', data: trends });
+  }
+
   if (req.method === 'GET') {
     const productIdeaId = extractIdeaIdFromUrl(req.url);
     if (productIdeaId) {
@@ -177,12 +191,33 @@ async function routeRequest(req, res) {
     });
   }
 
+  // Idea Validator — one-shot Freudix validation (create idea -> enrich -> score).
+  if (req.url === '/api/idea-validator/validate') {
+    const { brandId, storeId, keyword, title, country } = validateFreudixValidatePayload(payload);
+    return sendJson(res, 201, {
+      status: 'ok',
+      data: await validateKeyword({ brandId, storeId, keyword, title, country }),
+    });
+  }
 
+  // Idea Validator — batch validation for a list of keywords.
+  if (req.url === '/api/idea-validator/batch') {
+    const { brandId, storeId, keywords, country } = validateFreudixBatchPayload(payload);
+    return sendJson(res, 201, {
+      status: 'ok',
+      data: await validateKeywordBatch({ brandId, storeId, keywords, country }),
+    });
+  }
 
   return sendJson(res, 404, { status: 'not_found' });
 }
 
-export async function startHttpServer({ port = Number(process.env.PORT || 3000) } = {}) {
+export async function startHttpServer({
+  port = Number(process.env.PORT || 3000),
+  // Bind all interfaces by default so the app is reachable on hosting platforms
+  // (Railway, etc.); override with HOST=127.0.0.1 for local-only.
+  host = process.env.HOST || '0.0.0.0',
+} = {}) {
   await prisma.$connect();
 
   const server = http.createServer((req, res) => {
@@ -197,7 +232,7 @@ export async function startHttpServer({ port = Number(process.env.PORT || 3000) 
 
   await new Promise((resolve, reject) => {
     server.once('error', reject);
-    server.listen(port, '127.0.0.1', () => resolve());
+    server.listen(port, host, () => resolve());
   });
 
   return server;

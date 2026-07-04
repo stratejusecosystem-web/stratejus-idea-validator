@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "db:start": "docker compose up -d postgres",
     "db:stop": "docker compose stop postgres",

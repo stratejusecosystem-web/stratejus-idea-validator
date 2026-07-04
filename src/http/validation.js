@@ -126,3 +126,25 @@ export function validateDecideProductIdeaPayload(payload) {
   assert(isOptionalString(payload.opportunityScoreId), 'opportunityScoreId must be a string when provided');
   return payload;
 }
+
+export function validateFreudixValidatePayload(payload) {
+  validateObject(payload);
+  assert(isNonEmptyString(payload.brandId), 'brandId is required');
+  assert(isNonEmptyString(payload.storeId), 'storeId is required');
+  assert(isNonEmptyString(payload.keyword), 'keyword is required');
+  assert(isOptionalString(payload.title), 'title must be a string when provided');
+  assert(isOptionalString(payload.country), 'country must be a string when provided');
+  return payload;
+}
+
+export function validateFreudixBatchPayload(payload) {
+  validateObject(payload);
+  assert(isNonEmptyString(payload.brandId), 'brandId is required');
+  assert(isNonEmptyString(payload.storeId), 'storeId is required');
+  assert(
+    Array.isArray(payload.keywords) && payload.keywords.length > 0 && payload.keywords.every(isNonEmptyString),
+    'keywords must be a non-empty array of strings',
+  );
+  assert(isOptionalString(payload.country), 'country must be a string when provided');
+  return payload;
+}
